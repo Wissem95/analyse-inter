@@ -27,16 +27,10 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Configurer Apache
 ENV APACHE_DOCUMENT_ROOT=/app/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# Ajouter la configuration Apache personnalisée
-RUN echo '<Directory ${APACHE_DOCUMENT_ROOT}>\n\
-    Options Indexes FollowSymLinks\n\
-    AllowOverride All\n\
-    Require all granted\n\
-    </Directory>' > /etc/apache2/conf-available/laravel.conf \
-    && a2enconf laravel
+# Copier la configuration Apache
+COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
+RUN a2enmod rewrite headers
 
 # Définir le répertoire de travail
 WORKDIR /app
