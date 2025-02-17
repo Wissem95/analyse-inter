@@ -1,7 +1,7 @@
 FROM php:8.2-apache
 
 # Activer le module rewrite d'Apache
-RUN a2enmod rewrite
+RUN a2enmod rewrite headers
 
 # Installer les dépendances système
 RUN apt-get update && apt-get install -y \
@@ -29,6 +29,14 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 ENV APACHE_DOCUMENT_ROOT=/app/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
+# Ajouter la configuration Apache personnalisée
+RUN echo '<Directory ${APACHE_DOCUMENT_ROOT}>\n\
+    Options Indexes FollowSymLinks\n\
+    AllowOverride All\n\
+    Require all granted\n\
+    </Directory>' > /etc/apache2/conf-available/laravel.conf \
+    && a2enconf laravel
 
 # Définir le répertoire de travail
 WORKDIR /app

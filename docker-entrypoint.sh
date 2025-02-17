@@ -35,6 +35,13 @@ chown -R www-data:www-data /app/database
 echo "Création du lien symbolique pour le stockage..."
 php artisan storage:link --force
 
+# Nettoyer le cache
+echo "Nettoyage du cache..."
+php artisan cache:clear
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+
 # Exécuter les migrations
 echo "Exécution des migrations..."
 php artisan migrate --force
