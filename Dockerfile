@@ -33,9 +33,13 @@ RUN mkdir -p /app/database /app/storage && \
     chmod -R 777 /app/storage /app/database && \
     chmod -R 777 /app/bootstrap/cache
 
+# Créer le fichier .env à partir de .env.example
+RUN cp .env.example .env && \
+    php -r "file_put_contents('.env', str_replace('APP_KEY=', 'APP_KEY=base64:'.base64_encode(random_bytes(32)), file_get_contents('.env')));"
+
 # Installer les dépendances PHP
 ENV COMPOSER_ALLOW_SUPERUSER=1
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # Installer les dépendances Node.js
 RUN npm ci --ignore-scripts
