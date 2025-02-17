@@ -1,8 +1,4 @@
-FROM php:8.2-apache
-
-# Activer le module rewrite d'Apache
-RUN a2enmod rewrite headers && \
-    echo "ServerName localhost" >> /etc/apache2/apache2.conf
+FROM php:8.2-fpm
 
 # Installer les dépendances système
 RUN apt-get update && apt-get install -y \
@@ -18,51 +14,28 @@ RUN apt-get update && apt-get install -y \
     npm
 
 # Installer les extensions PHP
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip xml
-
-# Installer les extensions PHP supplémentaires via PECL
-RUN pecl install redis && docker-php-ext-enable redis
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
 # Installer Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Configurer Apache
-ENV APACHE_DOCUMENT_ROOT=/app/public
-
-# Copier la configuration Apache
-COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
-RUN a2enmod rewrite headers
-
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Copier tous les fichiers du projet
+# Copier les fichiers du projet
 COPY . .
 
-# Créer les répertoires nécessaires et définir les permissions
-RUN mkdir -p /app/database /app/storage && \
-    chmod -R 777 /app/storage /app/database && \
-    chmod -R 777 /app/bootstrap/cache && \
-    chown -R www-data:www-data /app
-
-# Créer le fichier .env à partir de .env.example
-RUN cp .env.example .env && \
-    php -r "file_put_contents('.env', str_replace('APP_KEY=', 'APP_KEY=base64:'.base64_encode(random_bytes(32)), file_get_contents('.env')));"
-
-# Installer les dépendances PHP
+# Installer les dépendances
 ENV COMPOSER_ALLOW_SUPERUSER=1
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Installer les dépendances Node.js
-RUN npm ci --ignore-scripts
+# Installer les dépendances Node.js et construire les assets
+RUN npm ci && npm run build
 
-# Construire les assets
-RUN npm run build
+# Permissions
+RUN mkdir -p storage/framework/{sessions,views,cache} && \
+    chmod -R 777 storage bootstrap/cache
 
-# Script de démarrage
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+EXPOSE 8000
 
-# Démarrer l'application
-ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["apache2-foreground"]
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]

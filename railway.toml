@@ -3,7 +3,7 @@ builder = "dockerfile"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "apache2-foreground"
+startCommand = "php artisan serve --host=0.0.0.0 --port=$PORT"
 healthcheckPath = "/health"
 restartPolicyType = "on_failure"
 healthcheckTimeout = 300
