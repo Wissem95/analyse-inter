@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+echo "Configuration de l'application..."
+
 # Copier le fichier d'environnement Railway s'il existe
 if [ -f ".env.railway" ]; then
     echo "Utilisation du fichier .env.railway..."
@@ -23,6 +25,12 @@ if [ ! -d "/app/database" ]; then
     chmod -R 777 /app/database
 fi
 
+# S'assurer que les permissions sont correctes
+echo "Configuration des permissions..."
+chown -R www-data:www-data /app/storage
+chown -R www-data:www-data /app/bootstrap/cache
+chown -R www-data:www-data /app/database
+
 # Créer le lien symbolique pour le stockage
 echo "Création du lien symbolique pour le stockage..."
 php artisan storage:link --force
@@ -38,5 +46,5 @@ php artisan view:cache
 php artisan config:cache
 php artisan route:cache
 
-echo "Démarrage de l'application..."
+echo "Démarrage du serveur Apache..."
 exec "$@"

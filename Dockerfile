@@ -1,4 +1,7 @@
-FROM php:8.2-fpm
+FROM php:8.2-apache
+
+# Activer le module rewrite d'Apache
+RUN a2enmod rewrite
 
 # Installer les dépendances système
 RUN apt-get update && apt-get install -y \
@@ -22,6 +25,11 @@ RUN pecl install redis && docker-php-ext-enable redis
 # Installer Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+# Configurer Apache
+ENV APACHE_DOCUMENT_ROOT=/app/public
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
 # Définir le répertoire de travail
 WORKDIR /app
 
@@ -31,7 +39,8 @@ COPY . .
 # Créer les répertoires nécessaires et définir les permissions
 RUN mkdir -p /app/database /app/storage && \
     chmod -R 777 /app/storage /app/database && \
-    chmod -R 777 /app/bootstrap/cache
+    chmod -R 777 /app/bootstrap/cache && \
+    chown -R www-data:www-data /app
 
 # Créer le fichier .env à partir de .env.example
 RUN cp .env.example .env && \
@@ -47,13 +56,10 @@ RUN npm ci --ignore-scripts
 # Construire les assets
 RUN npm run build
 
-# Exposer le port
-EXPOSE 8000
-
 # Script de démarrage
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Démarrer l'application
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+CMD ["apache2-foreground"]
