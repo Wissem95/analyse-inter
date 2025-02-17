@@ -12,3 +12,7 @@ healthcheckTimeout = 300
 PHP_VERSION = "8.2"
 NODE_VERSION = "18.19.0"
 COMPOSER_ALLOW_SUPERUSER = "1"
+APP_ENV = "production"
+APP_DEBUG = "false"
+DB_CONNECTION = "sqlite"
+DB_DATABASE = "/app/database/database.sqlite"
