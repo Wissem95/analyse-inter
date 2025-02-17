@@ -13,8 +13,5 @@ Route::get('/{any}', function () {
 })->where('any', '^(?!api).*$');
 
 Route::get('/health', function () {
-    return response()->json([
-        'status' => 'ok',
-        'timestamp' => now()->toIso8601String()
-    ]);
+    return 'ok';
 });

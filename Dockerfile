@@ -1,7 +1,8 @@
 FROM php:8.2-apache
 
 # Activer le module rewrite d'Apache
-RUN a2enmod rewrite headers
+RUN a2enmod rewrite headers && \
+    echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
 # Installer les dépendances système
 RUN apt-get update && apt-get install -y \
