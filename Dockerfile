@@ -25,21 +25,22 @@ WORKDIR /app
 # Copier les fichiers du projet
 COPY . .
 
-# Créer le fichier .env et générer la clé
-RUN cp .env.example .env && \
-    php artisan key:generate
-
 # Installer les dépendances
 ENV COMPOSER_ALLOW_SUPERUSER=1
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
+# Créer le fichier .env et générer la clé
+RUN cp .env.example .env && \
+    php artisan key:generate
+
 # Installer les dépendances Node.js et construire les assets
 RUN npm ci && npm run build
 
-# Permissions
+# Permissions et structure
 RUN mkdir -p storage/framework/{sessions,views,cache} database && \
     chmod -R 777 storage bootstrap/cache database && \
-    touch database/database.sqlite
+    touch database/database.sqlite && \
+    php artisan storage:link
 
 EXPOSE 8000
 
