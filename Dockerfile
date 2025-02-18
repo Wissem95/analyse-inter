@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     libzip-dev \
     postgresql-client \
+    dos2unix \
     && docker-php-ext-install pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip
 
 # Installation de Node.js
@@ -32,18 +33,14 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Définition du répertoire de travail
 WORKDIR /var/www/html
 
-# Copie des fichiers de configuration
-COPY composer.json composer.lock package.json package-lock.json ./
-COPY .env.railway .env.railway
-
-# Installation des dépendances PHP
-RUN composer install --no-dev --optimize-autoloader --no-interaction
-
-# Copie du reste des fichiers du projet
+# Copie de tous les fichiers du projet
 COPY . .
 
-# Génération de la clé d'application
-RUN php artisan key:generate
+# Copie du fichier d'environnement
+COPY .env.railway .env
+
+# Installation des dépendances PHP
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # Installation des dépendances Node.js et build
 RUN npm ci && npm run build
@@ -55,7 +52,8 @@ RUN chown -R www-data:www-data /var/www/html \
 
 # Copie et configuration du script de démarrage
 COPY docker/8.2/start-railway.sh /usr/local/bin/start-railway
-RUN chmod +x /usr/local/bin/start-railway
+RUN chmod +x /usr/local/bin/start-railway \
+    && dos2unix /usr/local/bin/start-railway
 
 EXPOSE 80
 
