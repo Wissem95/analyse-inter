@@ -1,46 +1,44 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Starting deployment process..."
+echo "🚀 Démarrage du processus de déploiement..."
 
-# Copier le fichier d'environnement
-echo "📝 Setting up environment variables..."
+# Configuration de l'environnement
+echo "📝 Configuration de l'environnement..."
 cp .env.railway .env
 
-# Générer la clé d'application si nécessaire
+# Attente de la base de données
+echo "⏳ Attente de la base de données..."
+until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USERNAME"; do
+  echo "PostgreSQL n'est pas prêt - nouvelle tentative dans 1 seconde"
+  sleep 1
+done
+
+# Génération de la clé si nécessaire
 if [ -z "$APP_KEY" ]; then
-    echo "🔑 Generating application key..."
+    echo "🔑 Génération de la clé d'application..."
     php artisan key:generate
 fi
 
-# Créer le lien symbolique pour le stockage
-echo "🔗 Creating storage link..."
-php artisan storage:link --force
+# Optimisations
+echo "⚡ Optimisation de l'application..."
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
 
-# Nettoyer les caches
-echo "🧹 Clearing application cache..."
-php artisan config:clear
-php artisan cache:clear
-php artisan route:clear
-php artisan view:clear
-
-# Optimiser l'application
-echo "⚡ Optimizing application..."
-php artisan optimize
-
-# Exécuter les migrations
-echo "🔄 Running database migrations..."
+# Migrations
+echo "🔄 Exécution des migrations..."
 php artisan migrate --force
 
-# Configurer les permissions
-echo "👮 Setting up permissions..."
+# Configuration des permissions
+echo "👮 Configuration des permissions..."
 chown -R www-data:www-data /var/www/html/storage
 chmod -R 775 /var/www/html/storage
 chown -R www-data:www-data /var/www/html/bootstrap/cache
 chmod -R 775 /var/www/html/bootstrap/cache
 
-echo "✅ Deployment process completed!"
-echo "🌐 Starting Apache..."
+echo "✅ Déploiement terminé!"
+echo "🌐 Démarrage d'Apache..."
 
-# Démarrer Apache en premier plan
+# Démarrage d'Apache en premier plan
 exec apache2-foreground
