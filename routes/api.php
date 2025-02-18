@@ -17,4 +17,6 @@ Route::middleware(['api'])->group(function () {
     Route::post('export/technicien/{technicien}', [InterventionController::class, 'exportPDF']);
     Route::post('/interventions/update-presta-revenue', [InterventionController::class, 'updatePrestaRevenue']);
     Route::post('/interventions/update-revenu-percu', [InterventionController::class, 'updateRevenuPercu']);
+    Route::get('import/history', [InterventionController::class, 'importHistory']);
+    Route::delete('import/{id}', [InterventionController::class, 'deleteImport']);
 });

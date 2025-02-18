@@ -51,6 +51,9 @@
             </div>
         </div>
 
+        <!-- Historique des imports -->
+        <ImportHistory />
+
         <!-- Graphique d'évolution mensuelle -->
         <div class="p-6 bg-white rounded-lg shadow">
             <h2 class="mb-4 text-lg font-medium">Évolution mensuelle</h2>
@@ -121,6 +124,7 @@ import {
 import { Line } from 'vue-chartjs';
 import DateFilter from './DateFilter.vue';
 import TechnicienDetails from './TechnicienDetails.vue';
+import ImportHistory from './ImportHistory.vue';
 
 // Enregistrer les composants Chart.js nécessaires
 ChartJS.register(
@@ -202,8 +206,12 @@ const formatPrice = (value) => {
 const loadStats = async () => {
     try {
         const params = new URLSearchParams();
-        if (dateFilter.value.debut) params.append('debut', dateFilter.value.debut);
-        if (dateFilter.value.fin) params.append('fin', dateFilter.value.fin);
+        if (dateFilter.value.debut) {
+            params.append('debut', dateFilter.value.debut);
+        }
+        if (dateFilter.value.fin) {
+            params.append('fin', dateFilter.value.fin);
+        }
 
         const response = await fetch(`/api/stats?${params.toString()}`, {
             headers: {
@@ -270,25 +278,25 @@ const loadStats = async () => {
     }
 };
 
-const applyDateFilter = (filter) => {
+const applyDateFilter = async (filter) => {
     dateFilter.value = filter;
-    loadStats();
+    await loadStats();
 };
 
-const selectPeriode = (periode) => {
+const selectPeriode = async (periode) => {
     dateFilter.value = {
         debut: periode.debut,
         fin: periode.fin
     };
-    loadStats();
+    await loadStats();
 };
 
-const resetDateFilter = () => {
+const resetDateFilter = async () => {
     dateFilter.value = {
         debut: '',
         fin: ''
     };
-    loadStats();
+    await loadStats();
 };
 
 const isActivePeriode = (periode) => {

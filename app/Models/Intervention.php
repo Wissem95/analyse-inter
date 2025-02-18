@@ -12,7 +12,9 @@ class Intervention extends Model
         'type_intervention',
         'type_operation',
         'type_habitation',
-        'prix'
+        'prix',
+        'revenus_percus',
+        'import_id'
     ];
 
     protected $casts = [
@@ -24,20 +26,20 @@ class Intervention extends Model
     public static function getStatsParMois()
     {
         return self::selectRaw('
-                strftime("%Y-%m", date_intervention) as mois,
+                to_char(date_intervention, \'YYYY-MM\') as mois,
                 COUNT(*) as total,
-                COUNT(CASE WHEN type_intervention = "SAV" THEN 1 END) as sav,
-                COUNT(CASE WHEN type_intervention = "RACC" AND type_operation = "reconnexion" THEN 1 END) as reconnexions,
-                COUNT(CASE WHEN type_intervention = "RACC" AND type_operation = "raccordement" AND type_habitation = "immeuble" THEN 1 END) as raccordements_immeuble,
-                COUNT(CASE WHEN type_intervention = "RACC" AND type_operation = "raccordement" AND type_habitation = "pavillon" THEN 1 END) as raccordements_pavillon,
-                COUNT(CASE WHEN type_intervention = "PRESTA" AND type_habitation = "immeuble" THEN 1 END) as presta_immeuble,
-                COUNT(CASE WHEN type_intervention = "PRESTA" AND type_habitation = "pavillon" THEN 1 END) as presta_pavillon,
-                SUM(CASE WHEN type_intervention = "SAV" THEN prix END) as revenus_sav,
-                SUM(CASE WHEN type_intervention = "RACC" AND type_operation = "reconnexion" THEN prix END) as revenus_reconnexions,
-                SUM(CASE WHEN type_intervention = "RACC" AND type_operation = "raccordement" AND type_habitation = "immeuble" THEN prix END) as revenus_raccordements_immeuble,
-                SUM(CASE WHEN type_intervention = "RACC" AND type_operation = "raccordement" AND type_habitation = "pavillon" THEN prix END) as revenus_raccordements_pavillon,
-                SUM(CASE WHEN type_intervention = "PRESTA" AND type_habitation = "immeuble" THEN prix END) as revenus_presta_immeuble,
-                SUM(CASE WHEN type_intervention = "PRESTA" AND type_habitation = "pavillon" THEN prix END) as revenus_presta_pavillon,
+                COUNT(CASE WHEN type_intervention = \'SAV\' THEN 1 END) as sav,
+                COUNT(CASE WHEN type_intervention = \'RACC\' AND type_operation = \'reconnexion\' THEN 1 END) as reconnexions,
+                COUNT(CASE WHEN type_intervention = \'RACC\' AND type_operation = \'raccordement\' AND type_habitation = \'immeuble\' THEN 1 END) as raccordements_immeuble,
+                COUNT(CASE WHEN type_intervention = \'RACC\' AND type_operation = \'raccordement\' AND type_habitation = \'pavillon\' THEN 1 END) as raccordements_pavillon,
+                COUNT(CASE WHEN type_intervention = \'PRESTA\' AND type_habitation = \'immeuble\' THEN 1 END) as presta_immeuble,
+                COUNT(CASE WHEN type_intervention = \'PRESTA\' AND type_habitation = \'pavillon\' THEN 1 END) as presta_pavillon,
+                SUM(CASE WHEN type_intervention = \'SAV\' THEN prix END) as revenus_sav,
+                SUM(CASE WHEN type_intervention = \'RACC\' AND type_operation = \'reconnexion\' THEN prix END) as revenus_reconnexions,
+                SUM(CASE WHEN type_intervention = \'RACC\' AND type_operation = \'raccordement\' AND type_habitation = \'immeuble\' THEN prix END) as revenus_raccordements_immeuble,
+                SUM(CASE WHEN type_intervention = \'RACC\' AND type_operation = \'raccordement\' AND type_habitation = \'pavillon\' THEN prix END) as revenus_raccordements_pavillon,
+                SUM(CASE WHEN type_intervention = \'PRESTA\' AND type_habitation = \'immeuble\' THEN prix END) as revenus_presta_immeuble,
+                SUM(CASE WHEN type_intervention = \'PRESTA\' AND type_habitation = \'pavillon\' THEN prix END) as revenus_presta_pavillon,
                 SUM(prix) as revenus_total
             ')
             ->groupBy('mois')

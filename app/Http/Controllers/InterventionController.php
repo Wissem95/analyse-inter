@@ -13,6 +13,7 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\DB;
+use App\Models\ImportHistory;
 
 class InterventionController extends Controller
 {
@@ -48,11 +49,28 @@ class InterventionController extends Controller
 
             Log::info('Début de l\'import du fichier: ' . $file->getClientOriginalName());
 
-            $import = new InterventionsImport();
+            // Créer l'historique de l'import d'abord
+            $importHistory = ImportHistory::create([
+                'filename' => $file->getClientOriginalName(),
+                'records_count' => 0, // Sera mis à jour après l'import
+                'import_date' => now(),
+                'status' => 'pending',
+                'errors' => []
+            ]);
+
+            $import = new InterventionsImport($importHistory->id);
             Excel::import($import, $file);
 
             $errors = $import->getErrors();
             $count = $import->getRowCount();
+
+            // Mettre à jour l'historique de l'import
+            $status = count($errors) === 0 ? 'success' : (count($errors) < $count ? 'partial' : 'failed');
+            $importHistory->update([
+                'records_count' => $count - count($errors),
+                'status' => $status,
+                'errors' => $errors
+            ]);
 
             if (count($errors) > 0) {
                 if ($count > count($errors)) {
@@ -77,15 +95,6 @@ class InterventionController extends Controller
                 'count' => $count
             ]);
 
-        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
-            Log::error('Erreur de validation Excel: ' . json_encode($e->failures()));
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur de validation du fichier Excel',
-                'errors' => collect($e->failures())->map(function ($failure) {
-                    return "Ligne {$failure->row()}: {$failure->errors()[0]}";
-                })->toArray()
-            ], 422);
         } catch (\Exception $e) {
             Log::error('Erreur lors de l\'import: ' . $e->getMessage());
             return response()->json([
@@ -99,15 +108,26 @@ class InterventionController extends Controller
     public function stats(Request $request)
     {
         try {
-            // Statistiques globales
+            // Construire la requête de base
+            $query = Intervention::query();
+
+            // Appliquer les filtres de date si présents
+            if ($request->has('debut') && $request->has('fin')) {
+                $query->whereBetween('date_intervention', [
+                    Carbon::parse($request->debut),
+                    Carbon::parse($request->fin)
+                ]);
+            }
+
+            // Statistiques globales avec le filtre de date
             $global = [
-                'total_interventions' => (int) Intervention::count(),
-                'total_revenus' => (float) Intervention::sum('prix'),
-                'total_revenus_percus' => (float) Intervention::sum('revenus_percus')
+                'total_interventions' => (int) $query->count(),
+                'total_revenus' => (float) $query->sum('prix'),
+                'total_revenus_percus' => (float) $query->sum('revenus_percus')
             ];
 
-            // Statistiques par technicien
-            $parTechnicien = Intervention::select('technicien')
+            // Statistiques par technicien avec le filtre de date
+            $parTechnicien = $query->select('technicien')
                 ->selectRaw('COUNT(*) as interventions')
                 ->selectRaw('SUM(prix) as revenus')
                 ->selectRaw('SUM(revenus_percus) as revenus_percus')
@@ -122,8 +142,8 @@ class InterventionController extends Controller
                     ];
                 });
 
-            // Statistiques par type d'intervention
-            $parService = Intervention::select('type_intervention')
+            // Statistiques par type d'intervention avec le filtre de date
+            $parService = $query->select('type_intervention')
                 ->selectRaw('COUNT(*) as interventions')
                 ->selectRaw('SUM(prix) as revenus')
                 ->groupBy('type_intervention')
@@ -137,17 +157,17 @@ class InterventionController extends Controller
                     ];
                 });
 
-            // Évolution mensuelle
-            $evolution = Intervention::selectRaw('strftime("%Y-%m", date_intervention) as mois')
+            // Évolution mensuelle avec le filtre de date
+            $evolution = $query->selectRaw('to_char(date_intervention, \'YYYY-MM\') as mois')
                 ->selectRaw('COUNT(*) as total')
                 ->selectRaw('SUM(prix) as revenus')
-                ->selectRaw('COUNT(CASE WHEN type_intervention = "SAV" THEN 1 END) as sav')
-                ->selectRaw('COUNT(CASE WHEN type_intervention = "RACC" THEN 1 END) as racc')
-                ->selectRaw('COUNT(CASE WHEN type_intervention = "PRESTA" THEN 1 END) as presta')
-                ->selectRaw('COUNT(CASE WHEN type_operation = "raccordement" THEN 1 END) as raccordements')
-                ->selectRaw('COUNT(CASE WHEN type_operation = "reconnexion" THEN 1 END) as reconnexions')
-                ->selectRaw('COUNT(CASE WHEN type_habitation = "immeuble" THEN 1 END) as immeubles')
-                ->selectRaw('COUNT(CASE WHEN type_habitation = "pavillon" THEN 1 END) as pavillons')
+                ->selectRaw('COUNT(CASE WHEN type_intervention = \'SAV\' THEN 1 END) as sav')
+                ->selectRaw('COUNT(CASE WHEN type_intervention = \'RACC\' THEN 1 END) as racc')
+                ->selectRaw('COUNT(CASE WHEN type_intervention = \'PRESTA\' THEN 1 END) as presta')
+                ->selectRaw('COUNT(CASE WHEN type_operation = \'raccordement\' THEN 1 END) as raccordements')
+                ->selectRaw('COUNT(CASE WHEN type_operation = \'reconnexion\' THEN 1 END) as reconnexions')
+                ->selectRaw('COUNT(CASE WHEN type_habitation = \'immeuble\' THEN 1 END) as immeubles')
+                ->selectRaw('COUNT(CASE WHEN type_habitation = \'pavillon\' THEN 1 END) as pavillons')
                 ->groupBy('mois')
                 ->orderBy('mois')
                 ->get()
@@ -224,20 +244,20 @@ class InterventionController extends Controller
 
             // Évolution mensuelle détaillée
             $evolution = Intervention::where('technicien', $technicien)
-                ->selectRaw('strftime("%Y-%m", date_intervention) as mois')
+                ->selectRaw('to_char(date_intervention, \'YYYY-MM\') as mois')
                 ->selectRaw('COUNT(*) as total')
-                ->selectRaw('COUNT(CASE WHEN type_intervention = "SAV" THEN 1 END) as sav')
-                ->selectRaw('SUM(CASE WHEN type_intervention = "SAV" THEN prix ELSE 0 END) as revenus_sav')
-                ->selectRaw('COUNT(CASE WHEN type_intervention = "RACC" AND type_operation = "reconnexion" THEN 1 END) as reconnexions')
-                ->selectRaw('SUM(CASE WHEN type_intervention = "RACC" AND type_operation = "reconnexion" THEN prix ELSE 0 END) as revenus_reconnexions')
-                ->selectRaw('COUNT(CASE WHEN type_intervention = "RACC" AND type_operation = "raccordement" AND type_habitation = "immeuble" THEN 1 END) as raccordements_immeuble')
-                ->selectRaw('SUM(CASE WHEN type_intervention = "RACC" AND type_operation = "raccordement" AND type_habitation = "immeuble" THEN prix ELSE 0 END) as revenus_raccordements_immeuble')
-                ->selectRaw('COUNT(CASE WHEN type_intervention = "RACC" AND type_operation = "raccordement" AND type_habitation = "pavillon" THEN 1 END) as raccordements_pavillon')
-                ->selectRaw('SUM(CASE WHEN type_intervention = "RACC" AND type_operation = "raccordement" AND type_habitation = "pavillon" THEN prix ELSE 0 END) as revenus_raccordements_pavillon')
-                ->selectRaw('COUNT(CASE WHEN type_intervention = "PRESTA" AND type_habitation = "immeuble" THEN 1 END) as presta_immeuble')
-                ->selectRaw('SUM(CASE WHEN type_intervention = "PRESTA" AND type_habitation = "immeuble" THEN prix ELSE 0 END) as revenus_presta_immeuble')
-                ->selectRaw('COUNT(CASE WHEN type_intervention = "PRESTA" AND type_habitation = "pavillon" THEN 1 END) as presta_pavillon')
-                ->selectRaw('SUM(CASE WHEN type_intervention = "PRESTA" AND type_habitation = "pavillon" THEN prix ELSE 0 END) as revenus_presta_pavillon')
+                ->selectRaw('COUNT(CASE WHEN type_intervention = \'SAV\' THEN 1 END) as sav')
+                ->selectRaw('SUM(CASE WHEN type_intervention = \'SAV\' THEN prix ELSE 0 END) as revenus_sav')
+                ->selectRaw('COUNT(CASE WHEN type_intervention = \'RACC\' AND type_operation = \'reconnexion\' THEN 1 END) as reconnexions')
+                ->selectRaw('SUM(CASE WHEN type_intervention = \'RACC\' AND type_operation = \'reconnexion\' THEN prix ELSE 0 END) as revenus_reconnexions')
+                ->selectRaw('COUNT(CASE WHEN type_intervention = \'RACC\' AND type_operation = \'raccordement\' AND type_habitation = \'immeuble\' THEN 1 END) as raccordements_immeuble')
+                ->selectRaw('SUM(CASE WHEN type_intervention = \'RACC\' AND type_operation = \'raccordement\' AND type_habitation = \'immeuble\' THEN prix ELSE 0 END) as revenus_raccordements_immeuble')
+                ->selectRaw('COUNT(CASE WHEN type_intervention = \'RACC\' AND type_operation = \'raccordement\' AND type_habitation = \'pavillon\' THEN 1 END) as raccordements_pavillon')
+                ->selectRaw('SUM(CASE WHEN type_intervention = \'RACC\' AND type_operation = \'raccordement\' AND type_habitation = \'pavillon\' THEN prix ELSE 0 END) as revenus_raccordements_pavillon')
+                ->selectRaw('COUNT(CASE WHEN type_intervention = \'PRESTA\' AND type_habitation = \'immeuble\' THEN 1 END) as presta_immeuble')
+                ->selectRaw('SUM(CASE WHEN type_intervention = \'PRESTA\' AND type_habitation = \'immeuble\' THEN prix ELSE 0 END) as revenus_presta_immeuble')
+                ->selectRaw('COUNT(CASE WHEN type_intervention = \'PRESTA\' AND type_habitation = \'pavillon\' THEN 1 END) as presta_pavillon')
+                ->selectRaw('SUM(CASE WHEN type_intervention = \'PRESTA\' AND type_habitation = \'pavillon\' THEN prix ELSE 0 END) as revenus_presta_pavillon')
                 ->selectRaw('SUM(prix) as revenus_total')
                 ->selectRaw('MAX(revenus_percus) as revenus_percus')
                 ->groupBy('mois')
@@ -402,6 +422,54 @@ class InterventionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la mise à jour des revenus perçus',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function importHistory()
+    {
+        try {
+            $history = ImportHistory::orderBy('import_date', 'desc')->get();
+            return response()->json([
+                'success' => true,
+                'history' => $history
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération de l\'historique des imports: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération de l\'historique',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteImport($id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $import = ImportHistory::findOrFail($id);
+
+            // Supprimer uniquement les interventions liées à cet import
+            Intervention::where('import_id', $id)->delete();
+
+            // Marquer l'import comme supprimé
+            $import->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Import supprimé avec succès'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la suppression de l\'import: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la suppression de l\'import',
                 'error' => $e->getMessage()
             ], 500);
         }

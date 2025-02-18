@@ -35,6 +35,12 @@ class InterventionsImport implements
         'sav_immeuble' => 5,
         'default' => 5
     ];
+    private $importId;
+
+    public function __construct($importId)
+    {
+        $this->importId = $importId;
+    }
 
     public function getCsvSettings(): array
     {
@@ -69,7 +75,8 @@ class InterventionsImport implements
                 'type_intervention' => $typeIntervention,
                 'type_operation' => $typeOperation,
                 'type_habitation' => $typeHabitation,
-                'prix' => $prix
+                'prix' => $prix,
+                'import_id' => $this->importId
             ]);
         } catch (\Exception $e) {
             $this->importErrors[] = "Ligne {$this->rowCount}: {$e->getMessage()}";
