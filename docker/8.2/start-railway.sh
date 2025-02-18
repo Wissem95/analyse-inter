@@ -7,23 +7,17 @@ echo "🚀 Démarrage du processus de déploiement..."
 echo "📝 Configuration de l'environnement..."
 cp .env.railway .env
 
-# Extraction des informations de connexion depuis DATABASE_URL
-if [ ! -z "$DATABASE_URL" ]; then
-    echo "🔄 Configuration de la base de données..."
-    # Exemple de DATABASE_URL: postgres://user:password@host:port/dbname
-    DB_HOST=$(echo $DATABASE_URL | awk -F[@//] '{print $4}' | cut -d: -f1)
-    DB_PORT=$(echo $DATABASE_URL | awk -F[@//] '{print $4}' | cut -d: -f2 | cut -d/ -f1)
-    DB_DATABASE=$(echo $DATABASE_URL | awk -F[@//] '{print $4}' | cut -d/ -f2)
-    DB_USERNAME=$(echo $DATABASE_URL | awk -F[@//] '{print $3}' | cut -d: -f1)
-    DB_PASSWORD=$(echo $DATABASE_URL | awk -F[@//] '{print $3}' | cut -d: -f2)
+# Vérification de la configuration
+echo "🔍 Vérification de la configuration..."
+php artisan config:clear
+php artisan cache:clear
 
-    # Mise à jour du fichier .env avec les valeurs extraites
-    sed -i "s|DB_HOST=.*|DB_HOST=$DB_HOST|g" .env
-    sed -i "s|DB_PORT=.*|DB_PORT=$DB_PORT|g" .env
-    sed -i "s|DB_DATABASE=.*|DB_DATABASE=$DB_DATABASE|g" .env
-    sed -i "s|DB_USERNAME=.*|DB_USERNAME=$DB_USERNAME|g" .env
-    sed -i "s|DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD|g" .env
-fi
+# Affichage des variables de connexion pour debug
+echo "📊 Configuration de la base de données :"
+echo "DB_CONNECTION: $DB_CONNECTION"
+echo "DB_HOST: $DB_HOST"
+echo "DB_PORT: $DB_PORT"
+echo "DB_DATABASE: $DB_DATABASE"
 
 # Attente de la base de données
 echo "⏳ Attente de la base de données..."
@@ -39,22 +33,15 @@ until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USERNAME"; do
     fi
 done
 
-# Vérification de la configuration
-echo "🔍 Vérification de la configuration..."
-php artisan config:clear
-php artisan cache:clear
+# Test de connexion avec PHP
+echo "🔌 Test de connexion à la base de données..."
+php artisan db:monitor
 
 # Génération de la clé si nécessaire
 if [ -z "$APP_KEY" ]; then
     echo "🔑 Génération de la clé d'application..."
     php artisan key:generate
 fi
-
-# Optimisations
-echo "⚡ Optimisation de l'application..."
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
 
 # Migrations
 echo "🔄 Exécution des migrations..."
