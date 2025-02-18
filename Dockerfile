@@ -34,6 +34,10 @@ WORKDIR /var/www/html
 # Copie des fichiers du projet
 COPY . .
 
+# Préparation de l'environnement
+COPY .env.example .env
+RUN php artisan key:generate
+
 # Installation des dépendances
 RUN composer install --no-dev --optimize-autoloader --no-interaction \
     && npm ci \
