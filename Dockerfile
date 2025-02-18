@@ -32,11 +32,18 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Définition du répertoire de travail
 WORKDIR /var/www/html
 
-# Copie des fichiers du projet
-COPY . .
+# Copie des fichiers de configuration
+COPY composer.json composer.lock package.json package-lock.json ./
+COPY .env.example .env
 
 # Installation des dépendances PHP
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+
+# Copie du reste des fichiers du projet
+COPY . .
+
+# Génération de la clé d'application
+RUN php artisan key:generate
 
 # Installation des dépendances Node.js et build
 RUN npm ci && npm run build
