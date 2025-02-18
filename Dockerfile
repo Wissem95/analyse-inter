@@ -34,14 +34,15 @@ WORKDIR /var/www/html
 # Copie des fichiers du projet
 COPY . .
 
+# Installation des dépendances PHP
+RUN composer install --no-dev --optimize-autoloader --no-interaction
+
 # Préparation de l'environnement
 COPY .env.example .env
 RUN php artisan key:generate
 
-# Installation des dépendances
-RUN composer install --no-dev --optimize-autoloader --no-interaction \
-    && npm ci \
-    && npm run build
+# Installation des dépendances Node.js et build
+RUN npm ci && npm run build
 
 # Configuration des permissions
 RUN chown -R www-data:www-data /var/www/html \
