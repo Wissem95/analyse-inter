@@ -7,10 +7,24 @@ echo "🚀 Démarrage du processus de déploiement..."
 echo "📝 Configuration de l'environnement..."
 cp .env.railway .env
 
-# Vérification de la configuration
-echo "🔍 Vérification de la configuration..."
-php artisan config:clear
-php artisan cache:clear
+# Vérification des variables requises
+echo "🔍 Vérification des variables d'environnement..."
+required_vars=(
+    "DB_CONNECTION"
+    "DB_HOST"
+    "DB_PORT"
+    "DB_DATABASE"
+    "DB_USERNAME"
+    "DB_PASSWORD"
+    "DATABASE_URL"
+)
+
+for var in "${required_vars[@]}"; do
+    if [ -z "${!var}" ]; then
+        echo "❌ Erreur: La variable $var n'est pas définie"
+        exit 1
+    fi
+done
 
 # Affichage des variables de connexion pour debug
 echo "📊 Configuration de la base de données :"
@@ -18,6 +32,13 @@ echo "DB_CONNECTION: $DB_CONNECTION"
 echo "DB_HOST: $DB_HOST"
 echo "DB_PORT: $DB_PORT"
 echo "DB_DATABASE: $DB_DATABASE"
+echo "DB_USERNAME: $DB_USERNAME"
+echo "DATABASE_URL est défini: $([ ! -z "$DATABASE_URL" ] && echo "Oui" || echo "Non")"
+
+# Nettoyage du cache
+echo "🧹 Nettoyage du cache..."
+php artisan config:clear
+php artisan cache:clear
 
 # Attente de la base de données
 echo "⏳ Attente de la base de données..."
