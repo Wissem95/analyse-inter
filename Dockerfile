@@ -34,10 +34,10 @@ WORKDIR /var/www/html
 
 # Copie des fichiers de configuration
 COPY composer.json composer.lock package.json package-lock.json ./
-COPY .env.example .env
+COPY .env.railway .env.railway
 
 # Installation des dépendances PHP
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Copie du reste des fichiers du projet
 COPY . .
