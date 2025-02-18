@@ -16,7 +16,6 @@ required_vars=(
     "DB_DATABASE"
     "DB_USERNAME"
     "DB_PASSWORD"
-    "DATABASE_URL"
 )
 
 for var in "${required_vars[@]}"; do
@@ -33,12 +32,13 @@ echo "DB_HOST: $DB_HOST"
 echo "DB_PORT: $DB_PORT"
 echo "DB_DATABASE: $DB_DATABASE"
 echo "DB_USERNAME: $DB_USERNAME"
-echo "DATABASE_URL est défini: $([ ! -z "$DATABASE_URL" ] && echo "Oui" || echo "Non")"
 
 # Nettoyage du cache
 echo "🧹 Nettoyage du cache..."
 php artisan config:clear
 php artisan cache:clear
+php artisan route:clear
+php artisan view:clear
 
 # Attente de la base de données
 echo "⏳ Attente de la base de données..."
@@ -56,17 +56,17 @@ done
 
 # Test de connexion avec PHP
 echo "🔌 Test de connexion à la base de données..."
-php artisan db:monitor
+php artisan db:show
 
 # Génération de la clé si nécessaire
 if [ -z "$APP_KEY" ]; then
     echo "🔑 Génération de la clé d'application..."
-    php artisan key:generate
+    php artisan key:generate --force
 fi
 
-# Migrations
+# Migrations avec plus de verbosité
 echo "🔄 Exécution des migrations..."
-php artisan migrate --force
+php artisan migrate --force -v
 
 # Configuration des permissions
 echo "👮 Configuration des permissions..."
@@ -79,4 +79,4 @@ echo "✅ Déploiement terminé!"
 echo "🌐 Démarrage d'Apache..."
 
 # Démarrage d'Apache en premier plan
-exec apache2-foreground
+apache2-foreground

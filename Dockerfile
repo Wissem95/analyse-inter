@@ -35,14 +35,8 @@ WORKDIR /var/www/html
 # Copie des fichiers du projet
 COPY . .
 
-# Préparation de l'environnement
-COPY .env.example .env
-
-# Installation des dépendances PHP sans exécuter les scripts
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
-
-# Génération de la clé d'application
-RUN php artisan key:generate
+# Installation des dépendances PHP
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Installation des dépendances Node.js et build
 RUN npm ci && npm run build
@@ -52,7 +46,7 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/storage \
     && chmod -R 775 /var/www/html/bootstrap/cache
 
-# Copie du script de démarrage
+# Copie et configuration du script de démarrage
 COPY docker/8.2/start-railway.sh /usr/local/bin/start-railway
 RUN chmod +x /usr/local/bin/start-railway
 
