@@ -36,6 +36,9 @@ WORKDIR /var/www/html
 # Copie de tous les fichiers du projet
 COPY . .
 
+# Copie du fichier d'environnement
+COPY .env.render .env
+
 # Installation des dépendances PHP
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 

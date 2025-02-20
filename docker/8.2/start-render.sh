@@ -3,7 +3,18 @@ set -e
 
 echo "🚀 Démarrage du processus de déploiement..."
 
+# Vérification des variables d'environnement
+echo "🔍 Vérification des variables d'environnement..."
+for var in DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD; do
+    if [ -z "${!var}" ]; then
+        echo "❌ Erreur: La variable $var n'est pas définie"
+        exit 1
+    fi
+    echo "$var = ${!var}"
+done
+
 # Nettoyage du cache
+echo "🧹 Nettoyage du cache..."
 php artisan config:clear
 php artisan cache:clear
 php artisan route:clear
