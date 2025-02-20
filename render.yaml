@@ -6,6 +6,17 @@ services:
     healthCheckPath: /health
     buildCommand: chmod +x render-build.sh && ./render-build.sh
     startCommand: /usr/local/bin/start-render
+    buildEnv:
+      - key: DB_HOST
+        value: ep-tiny-cell-a8nfck52-pooler.eastus2.azure.neon.tech
+      - key: DB_PORT
+        value: 5432
+      - key: DB_DATABASE
+        value: neondb
+      - key: DB_USERNAME
+        value: neondb_owner
+      - key: DB_PASSWORD
+        value: npg_wB9xK2dDjSWm
     envVars:
       - key: APP_NAME
         value: "Analyseur d'Interventions"

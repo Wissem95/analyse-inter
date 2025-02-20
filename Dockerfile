@@ -33,6 +33,20 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Définition du répertoire de travail
 WORKDIR /var/www/html
 
+# Arguments pour les variables d'environnement de la base de données
+ARG DB_HOST
+ARG DB_PORT
+ARG DB_DATABASE
+ARG DB_USERNAME
+ARG DB_PASSWORD
+
+# Définition des variables d'environnement
+ENV DB_HOST=${DB_HOST}
+ENV DB_PORT=${DB_PORT}
+ENV DB_DATABASE=${DB_DATABASE}
+ENV DB_USERNAME=${DB_USERNAME}
+ENV DB_PASSWORD=${DB_PASSWORD}
+
 # Copie de tous les fichiers du projet
 COPY . .
 

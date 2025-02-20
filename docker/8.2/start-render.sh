@@ -3,8 +3,12 @@ set -e
 
 echo "🚀 Démarrage du processus de déploiement..."
 
+# Afficher l'environnement complet pour le débogage
+echo "📝 Variables d'environnement actuelles:"
+env | sort
+
 # Vérification des variables d'environnement avec leurs valeurs
-echo "🔍 Vérification des variables d'environnement..."
+echo "🔍 Vérification des variables d'environnement spécifiques..."
 for var in DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD; do
     echo "Vérification de $var: ${!var}"
     if [ -z "${!var}" ]; then
@@ -12,6 +16,10 @@ for var in DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD; do
         exit 1
     fi
 done
+
+# Vérification du contenu du fichier .env
+echo "📄 Contenu du fichier .env:"
+cat .env
 
 # Nettoyage du cache
 echo "🧹 Nettoyage du cache..."
@@ -22,6 +30,7 @@ php artisan view:clear
 
 # Test de connexion à la base de données
 echo "⏳ Test de connexion à la base de données..."
+echo "Tentative de connexion à PostgreSQL sur $DB_HOST:$DB_PORT avec l'utilisateur $DB_USERNAME"
 max_tries=30
 count=0
 until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USERNAME"; do
@@ -39,6 +48,10 @@ if [ -z "$APP_KEY" ]; then
     echo "🔑 Génération de la clé d'application..."
     php artisan key:generate --force
 fi
+
+# Test de connexion Laravel
+echo "🔌 Test de connexion Laravel à la base de données..."
+php artisan db:monitor
 
 # Migrations avec plus de verbosité
 echo "🔄 Exécution des migrations..."
