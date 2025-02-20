@@ -3,14 +3,14 @@ set -e
 
 echo "🚀 Démarrage du processus de déploiement..."
 
-# Vérification des variables d'environnement
+# Vérification des variables d'environnement avec leurs valeurs
 echo "🔍 Vérification des variables d'environnement..."
 for var in DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD; do
+    echo "Vérification de $var: ${!var}"
     if [ -z "${!var}" ]; then
         echo "❌ Erreur: La variable $var n'est pas définie"
         exit 1
     fi
-    echo "$var = ${!var}"
 done
 
 # Nettoyage du cache
@@ -20,8 +20,8 @@ php artisan cache:clear
 php artisan route:clear
 php artisan view:clear
 
-# Attente de la base de données
-echo "⏳ Attente de la base de données..."
+# Test de connexion à la base de données
+echo "⏳ Test de connexion à la base de données..."
 max_tries=30
 count=0
 until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USERNAME"; do

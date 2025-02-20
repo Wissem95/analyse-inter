@@ -37,8 +37,3 @@ services:
         value: sync
       - key: SESSION_SECURE_COOKIE
         value: true
-
-  - type: postgres
-    name: analyse-db
-    ipAllowList: []
-    plan: free
