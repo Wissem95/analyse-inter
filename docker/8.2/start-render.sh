@@ -36,13 +36,73 @@ echo "✅ Connexion à la base de données établie!"
 echo "🔄 Nettoyage de la base de données..."
 php artisan db:wipe --force || true
 
-# Création de la table de migrations si elle n'existe pas
-echo "🔄 Préparation de la base de données..."
-PGPASSWORD=npg_wB9xK2dDjSWm psql "postgresql://neondb_owner@ep-tiny-cell-a8nfck52-pooler.eastus2.azure.neon.tech/neondb?sslmode=require" -c 'CREATE TABLE IF NOT EXISTS migrations (id SERIAL PRIMARY KEY, migration VARCHAR(255) NOT NULL, batch INTEGER NOT NULL);' || true
+# Création manuelle des tables
+echo "🔄 Création des tables..."
+PGPASSWORD=npg_wB9xK2dDjSWm psql "postgresql://neondb_owner@ep-tiny-cell-a8nfck52-pooler.eastus2.azure.neon.tech/neondb?sslmode=require" << 'EOSQL'
+-- Table migrations
+CREATE TABLE IF NOT EXISTS migrations (
+    id SERIAL PRIMARY KEY,
+    migration VARCHAR(255) NOT NULL,
+    batch INTEGER NOT NULL
+);
 
-# Migrations avec plus de verbosité
-echo "🔄 Exécution des migrations..."
-php artisan migrate:fresh --force -v
+-- Table users
+CREATE TABLE IF NOT EXISTS users (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    email_verified_at TIMESTAMP NULL,
+    password VARCHAR(255) NOT NULL,
+    remember_token VARCHAR(100) NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL
+);
+
+-- Table password_reset_tokens
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    email VARCHAR(255) PRIMARY KEY,
+    token VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NULL
+);
+
+-- Table interventions
+CREATE TABLE IF NOT EXISTS interventions (
+    id BIGSERIAL PRIMARY KEY,
+    date_intervention DATE NOT NULL,
+    technicien VARCHAR(255) NOT NULL,
+    type_intervention VARCHAR(255) NOT NULL,
+    type_operation VARCHAR(255) NULL,
+    type_habitation VARCHAR(255) NULL,
+    prix DECIMAL(10,2) NOT NULL,
+    revenus_percus DECIMAL(10,2) DEFAULT 0,
+    import_id BIGINT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    FOREIGN KEY (import_id) REFERENCES import_history(id) ON DELETE CASCADE
+);
+
+-- Table import_history
+CREATE TABLE IF NOT EXISTS import_history (
+    id BIGSERIAL PRIMARY KEY,
+    filename VARCHAR(255) NOT NULL,
+    records_count INTEGER NOT NULL,
+    import_date TIMESTAMP NOT NULL,
+    status VARCHAR(255) NOT NULL,
+    errors JSONB NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    deleted_at TIMESTAMP NULL
+);
+
+-- Marquer les migrations comme terminées
+INSERT INTO migrations (migration, batch) VALUES
+('0001_01_01_000000_create_users_table', 1),
+('0001_01_01_000001_create_cache_table', 1),
+('0001_01_01_000002_create_jobs_table', 1),
+('2024_02_15_000000_create_interventions_table', 1),
+('2024_03_15_000000_create_import_history_table', 1),
+('2025_02_17_231502_add_import_id_to_interventions', 1);
+EOSQL
 
 # Optimisation pour la production
 echo "⚡ Optimisation de l'application..."
