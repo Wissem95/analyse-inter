@@ -3,38 +3,7 @@ set -e
 
 echo "🚀 Démarrage du processus de déploiement..."
 
-# Configuration de l'environnement
-echo "📝 Configuration de l'environnement..."
-cp .env.railway .env
-
-# Vérification des variables requises
-echo "🔍 Vérification des variables d'environnement..."
-required_vars=(
-    "DB_CONNECTION"
-    "DB_HOST"
-    "DB_PORT"
-    "DB_DATABASE"
-    "DB_USERNAME"
-    "DB_PASSWORD"
-)
-
-for var in "${required_vars[@]}"; do
-    if [ -z "${!var}" ]; then
-        echo "❌ Erreur: La variable $var n'est pas définie"
-        exit 1
-    fi
-done
-
-# Affichage des variables de connexion pour debug
-echo "📊 Configuration de la base de données :"
-echo "DB_CONNECTION: $DB_CONNECTION"
-echo "DB_HOST: $DB_HOST"
-echo "DB_PORT: $DB_PORT"
-echo "DB_DATABASE: $DB_DATABASE"
-echo "DB_USERNAME: $DB_USERNAME"
-
 # Nettoyage du cache
-echo "🧹 Nettoyage du cache..."
 php artisan config:clear
 php artisan cache:clear
 php artisan route:clear
@@ -53,10 +22,6 @@ until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USERNAME"; do
         exit 1
     fi
 done
-
-# Test de connexion avec PHP
-echo "🔌 Test de connexion à la base de données..."
-php artisan db:show
 
 # Génération de la clé si nécessaire
 if [ -z "$APP_KEY" ]; then

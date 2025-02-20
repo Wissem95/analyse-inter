@@ -51,10 +51,10 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/bootstrap/cache
 
 # Copie et configuration du script de démarrage
-COPY docker/8.2/start-railway.sh /usr/local/bin/start-railway
-RUN chmod +x /usr/local/bin/start-railway \
-    && dos2unix /usr/local/bin/start-railway
+COPY docker/8.2/start-render.sh /usr/local/bin/start-render
+RUN chmod +x /usr/local/bin/start-render \
+    && dos2unix /usr/local/bin/start-render
 
 EXPOSE 80
 
-CMD ["/usr/local/bin/start-railway"]
+CMD ["/usr/local/bin/start-render"]
