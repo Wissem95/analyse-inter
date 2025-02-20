@@ -10,6 +10,12 @@ export DATABASE_URL="postgresql://neondb_owner:npg_wB9xK2dDjSWm@ep-tiny-cell-a8n
 echo "📄 Contenu du fichier .env:"
 cat .env
 
+# Génération de la clé d'application si nécessaire
+if [ -z "$APP_KEY" ]; then
+    echo "🔑 Génération de la clé d'application..."
+    php artisan key:generate --force
+fi
+
 # Configuration des permissions avant tout
 echo "👮 Configuration des permissions..."
 chown -R www-data:www-data /var/www/html/storage
@@ -65,7 +71,20 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
     created_at TIMESTAMP NULL
 );
 
--- Table interventions
+-- Table import_history (créée AVANT interventions)
+CREATE TABLE IF NOT EXISTS import_history (
+    id BIGSERIAL PRIMARY KEY,
+    filename VARCHAR(255) NOT NULL,
+    records_count INTEGER NOT NULL,
+    import_date TIMESTAMP NOT NULL,
+    status VARCHAR(255) NOT NULL,
+    errors JSONB NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    deleted_at TIMESTAMP NULL
+);
+
+-- Table interventions (créée APRÈS import_history)
 CREATE TABLE IF NOT EXISTS interventions (
     id BIGSERIAL PRIMARY KEY,
     date_intervention DATE NOT NULL,
@@ -79,19 +98,6 @@ CREATE TABLE IF NOT EXISTS interventions (
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL,
     FOREIGN KEY (import_id) REFERENCES import_history(id) ON DELETE CASCADE
-);
-
--- Table import_history
-CREATE TABLE IF NOT EXISTS import_history (
-    id BIGSERIAL PRIMARY KEY,
-    filename VARCHAR(255) NOT NULL,
-    records_count INTEGER NOT NULL,
-    import_date TIMESTAMP NOT NULL,
-    status VARCHAR(255) NOT NULL,
-    errors JSONB NULL,
-    created_at TIMESTAMP NULL,
-    updated_at TIMESTAMP NULL,
-    deleted_at TIMESTAMP NULL
 );
 
 -- Marquer les migrations comme terminées
