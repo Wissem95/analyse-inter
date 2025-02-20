@@ -29,6 +29,14 @@ until php artisan db:monitor > /dev/null 2>&1; do
 done
 echo "✅ Connexion à la base de données établie!"
 
+# Nettoyage des tables existantes
+echo "🔄 Nettoyage de la base de données..."
+php artisan db:wipe --force || true
+
+# Installation des migrations
+echo "🔄 Installation des migrations..."
+php artisan migrate:install --force || true
+
 # Migrations avec plus de verbosité
 echo "🔄 Exécution des migrations..."
 php artisan migrate --force -v
