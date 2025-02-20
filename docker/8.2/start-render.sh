@@ -114,16 +114,25 @@ INSERT INTO migrations (migration, batch) VALUES
 ('2025_02_17_231502_add_import_id_to_interventions', 1);
 EOSQL
 
+# Reconstruction des assets
+echo "🎨 Reconstruction des assets..."
+npm run build
+
 # Création du lien symbolique pour le stockage
 echo "🔗 Création du lien symbolique pour le stockage..."
 php artisan storage:link || true
 
 # Optimisation pour la production
 echo "⚡ Optimisation de l'application..."
-php artisan optimize
+php artisan optimize --force
 php artisan view:cache
 php artisan config:cache
 php artisan route:cache
+
+# Vérification des permissions des assets
+echo "👮 Vérification des permissions des assets..."
+chown -R www-data:www-data /var/www/html/public/build
+chmod -R 775 /var/www/html/public/build
 
 echo "✅ Déploiement terminé!"
 echo "🌐 Démarrage d'Apache..."
