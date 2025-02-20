@@ -10,18 +10,22 @@ export DATABASE_URL="postgresql://neondb_owner:npg_wB9xK2dDjSWm@ep-tiny-cell-a8n
 echo "📄 Contenu du fichier .env:"
 cat .env
 
-# Génération de la clé d'application si nécessaire
-if [ -z "$APP_KEY" ]; then
-    echo "🔑 Génération de la clé d'application..."
-    php artisan key:generate --force
-fi
+# Création des répertoires nécessaires
+echo "📁 Création des répertoires de stockage..."
+mkdir -p /var/www/html/storage/framework/sessions
+mkdir -p /var/www/html/storage/framework/views
+mkdir -p /var/www/html/storage/framework/cache
+mkdir -p /var/www/html/storage/logs
+mkdir -p /var/www/html/bootstrap/cache
 
-# Configuration des permissions avant tout
+# Configuration des permissions
 echo "👮 Configuration des permissions..."
 chown -R www-data:www-data /var/www/html/storage
 chmod -R 775 /var/www/html/storage
 chown -R www-data:www-data /var/www/html/bootstrap/cache
 chmod -R 775 /var/www/html/bootstrap/cache
+chmod -R 775 /var/www/html/storage/framework
+chmod -R 775 /var/www/html/storage/logs
 
 # Nettoyage du cache Laravel (sans utiliser la base de données)
 echo "🧹 Nettoyage du cache Laravel..."
@@ -71,7 +75,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
     created_at TIMESTAMP NULL
 );
 
--- Table import_history (créée AVANT interventions)
+-- Table import_history
 CREATE TABLE IF NOT EXISTS import_history (
     id BIGSERIAL PRIMARY KEY,
     filename VARCHAR(255) NOT NULL,
@@ -84,7 +88,7 @@ CREATE TABLE IF NOT EXISTS import_history (
     deleted_at TIMESTAMP NULL
 );
 
--- Table interventions (créée APRÈS import_history)
+-- Table interventions
 CREATE TABLE IF NOT EXISTS interventions (
     id BIGSERIAL PRIMARY KEY,
     date_intervention DATE NOT NULL,
@@ -109,6 +113,10 @@ INSERT INTO migrations (migration, batch) VALUES
 ('2024_03_15_000000_create_import_history_table', 1),
 ('2025_02_17_231502_add_import_id_to_interventions', 1);
 EOSQL
+
+# Création du lien symbolique pour le stockage
+echo "🔗 Création du lien symbolique pour le stockage..."
+php artisan storage:link || true
 
 # Optimisation pour la production
 echo "⚡ Optimisation de l'application..."
