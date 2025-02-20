@@ -20,15 +20,15 @@ services:
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_HOST
-        value: ${RENDER_POSTGRES_HOST}
+        value: ep-tiny-cell-a8nfck52-pooler.eastus2.azure.neon.tech
       - key: DB_PORT
-        value: ${RENDER_POSTGRES_PORT}
+        value: 5432
       - key: DB_DATABASE
-        value: ${RENDER_POSTGRES_DATABASE}
+        value: neondb
       - key: DB_USERNAME
-        value: ${RENDER_POSTGRES_USER}
+        value: neondb_owner
       - key: DB_PASSWORD
-        value: ${RENDER_POSTGRES_PASSWORD}
+        value: npg_wB9xK2dDjSWm
       - key: SESSION_DRIVER
         value: file
       - key: CACHE_DRIVER
