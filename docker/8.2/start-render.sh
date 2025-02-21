@@ -27,9 +27,9 @@ chmod -R 775 /var/www/html/bootstrap/cache
 chmod -R 775 /var/www/html/storage/framework
 chmod -R 775 /var/www/html/storage/logs
 
-# Nettoyage du cache Laravel (sans utiliser la base de données)
-echo "🧹 Nettoyage du cache Laravel..."
-rm -rf /var/www/html/bootstrap/cache/*.php
+# Nettoyage du cache Laravel
+echo "🧹 Nettoyage du cache..."
+php artisan cache:clear
 php artisan config:clear
 php artisan route:clear
 php artisan view:clear
@@ -116,11 +116,17 @@ EOSQL
 
 # Reconstruction des assets
 echo "🎨 Reconstruction des assets..."
+npm install
 npm run build
+rm -rf public/build
+cp -r build/* public/build/
 
-# Création du lien symbolique pour le stockage
-echo "🔗 Création du lien symbolique pour le stockage..."
-php artisan storage:link || true
+# Nettoyage du cache Laravel
+echo "🧹 Nettoyage du cache..."
+php artisan cache:clear
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
 
 # Optimisation pour la production
 echo "⚡ Optimisation de l'application..."
@@ -129,10 +135,18 @@ php artisan view:cache
 php artisan config:cache
 php artisan route:cache
 
-# Vérification des permissions des assets
-echo "👮 Vérification des permissions des assets..."
+# Vérification des permissions
+echo "👮 Vérification des permissions..."
+chown -R www-data:www-data /var/www/html/storage
+chown -R www-data:www-data /var/www/html/bootstrap/cache
 chown -R www-data:www-data /var/www/html/public/build
+chmod -R 775 /var/www/html/storage
+chmod -R 775 /var/www/html/bootstrap/cache
 chmod -R 775 /var/www/html/public/build
+
+# Création du lien symbolique pour le stockage
+echo "🔗 Création du lien symbolique pour le stockage..."
+php artisan storage:link || true
 
 echo "✅ Déploiement terminé!"
 echo "🌐 Démarrage d'Apache..."
