@@ -116,11 +116,22 @@ EOSQL
 
 # Reconstruction des assets
 echo "🎨 Reconstruction des assets..."
-export NODE_OPTIONS="--max-old-space-size=4096"
-npm install --force
-npm run build --force || true
+export NODE_OPTIONS="--max-old-space-size=8192"
+npm cache clean --force
+rm -rf node_modules package-lock.json
+npm install
+NODE_ENV=production npm run build || {
+    echo "Build échoué, tentative de build en mode développement..."
+    npm run dev
+}
+
+# Création du répertoire public/build s'il n'existe pas
 mkdir -p public/build
-cp -r build/* public/build/ || true
+
+# Copie des assets
+if [ -d "build" ]; then
+    cp -rf build/* public/build/
+fi
 
 # Nettoyage du cache Laravel
 echo "🧹 Nettoyage du cache..."
