@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y \
 # Installation de Node.js
 RUN curl -sL https://deb.nodesource.com/setup_18.x | bash - \
     && apt-get install -y nodejs \
-    && npm install -g npm
+    && npm install -g npm@10.2.4
 
 # Configuration d'Apache
 RUN a2enmod rewrite headers
@@ -42,8 +42,12 @@ COPY .env.render .env
 # Installation des dépendances PHP
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
-# Installation des dépendances Node.js et build
-RUN npm ci && npm run build
+# Build des assets
+ENV NODE_OPTIONS="--max-old-space-size=8192"
+RUN npm ci && \
+    npm run build && \
+    mkdir -p public/build && \
+    cp -r build/* public/build/
 
 # Configuration des permissions
 RUN chown -R www-data:www-data /var/www/html \

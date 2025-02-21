@@ -114,32 +114,6 @@ INSERT INTO migrations (migration, batch) VALUES
 ('2025_02_17_231502_add_import_id_to_interventions', 1);
 EOSQL
 
-# Reconstruction des assets
-echo "🎨 Reconstruction des assets..."
-export NODE_OPTIONS="--max-old-space-size=8192"
-npm cache clean --force
-rm -rf node_modules package-lock.json
-npm install
-NODE_ENV=production npm run build || {
-    echo "Build échoué, tentative de build en mode développement..."
-    npm run dev
-}
-
-# Création du répertoire public/build s'il n'existe pas
-mkdir -p public/build
-
-# Copie des assets
-if [ -d "build" ]; then
-    cp -rf build/* public/build/
-fi
-
-# Nettoyage du cache Laravel
-echo "🧹 Nettoyage du cache..."
-php artisan cache:clear
-php artisan config:clear
-php artisan route:clear
-php artisan view:clear
-
 # Optimisation pour la production
 echo "⚡ Optimisation de l'application..."
 php artisan optimize --force
@@ -160,8 +134,8 @@ chmod -R 775 /var/www/html/public/build
 echo "🔗 Création du lien symbolique pour le stockage..."
 php artisan storage:link || true
 
-echo "✅ Déploiement terminé!"
+echo "✅ Configuration terminée!"
 echo "🌐 Démarrage d'Apache..."
 
-# Démarrage d'Apache en premier plan
+# Démarrage d'Apache
 apache2-foreground
