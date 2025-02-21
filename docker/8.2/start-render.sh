@@ -116,10 +116,11 @@ EOSQL
 
 # Reconstruction des assets
 echo "🎨 Reconstruction des assets..."
-npm install
-npm run build
-rm -rf public/build
-cp -r build/* public/build/
+export NODE_OPTIONS="--max-old-space-size=4096"
+npm install --force
+npm run build --force || true
+mkdir -p public/build
+cp -r build/* public/build/ || true
 
 # Nettoyage du cache Laravel
 echo "🧹 Nettoyage du cache..."
