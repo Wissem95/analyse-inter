@@ -161,18 +161,34 @@
             </div>
 
             <!-- Bouton de sauvegarde fixe en bas -->
-            <div class="sticky bottom-0 flex justify-end pt-4 mt-4 bg-white border-t">
-                <button
-                    @click="saveAllChanges"
-                    class="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-                    :disabled="saving"
-                >
-                    <div class="flex items-center space-x-2">
-                        <span v-if="!saving">Sauvegarder</span>
-                        <span v-else>Sauvegarde en cours...</span>
-                        <div v-if="saving" class="w-4 h-4 border-2 border-white rounded-full animate-spin border-t-transparent"></div>
+            <div class="sticky bottom-0 flex flex-col pt-4 mt-4 bg-white border-t">
+                <div v-if="saving" class="mb-2">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm text-gray-600">Progression : {{ Math.round(saveProgress) }}%</span>
+                        <span class="text-sm text-gray-600">
+                            Temps restant : {{ Math.ceil(estimatedTime / 1000) }}s
+                        </span>
                     </div>
-                </button>
+                    <div class="w-full h-2 bg-gray-200 rounded-full">
+                        <div
+                            class="h-full transition-all duration-200 bg-blue-600 rounded-full"
+                            :style="{ width: `${saveProgress}%` }"
+                        ></div>
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button
+                        @click="saveAllChanges"
+                        class="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+                        :disabled="saving"
+                    >
+                        <div class="flex items-center space-x-2">
+                            <span v-if="!saving">Sauvegarder</span>
+                            <span v-else>Sauvegarde en cours...</span>
+                            <div v-if="saving" class="w-4 h-4 border-2 border-white rounded-full animate-spin border-t-transparent"></div>
+                        </div>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -202,6 +218,9 @@ const error = ref(null);
 
 const saving = ref(false);
 const unsavedChanges = ref(false);
+const saveProgress = ref(0);
+const estimatedTime = ref(0);
+const startTime = ref(0);
 
 const formatPrice = (value) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -308,58 +327,75 @@ const calculateGlobalPercus = () => {
 const saveAllChanges = async () => {
     saving.value = true;
     error.value = null;
+    saveProgress.value = 0;
+    startTime.value = Date.now();
+
     try {
-        // Sauvegarder les revenus perçus pour chaque mois
-        for (const mois of stats.value.evolution) {
-            // Mettre à jour les revenus perçus
-            const revenuResponse = await fetch(`/api/interventions/update-revenu-percu`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify({
-                    mois: mois.mois,
-                    technicien: props.technicien,
-                    revenus_percus: parseFloat(mois.revenus_percus || 0)
-                })
-            });
+        const totalOperations = stats.value.evolution.length;
+        let completedOperations = 0;
 
-            if (!revenuResponse.ok) {
-                throw new Error('Erreur lors de la mise à jour des revenus perçus');
+        // Préparer toutes les promesses de mise à jour
+        const updatePromises = stats.value.evolution.map(async (mois) => {
+            try {
+                // Créer un tableau de promesses pour chaque mois
+                const monthPromises = [
+                    // Mise à jour des revenus perçus
+                    fetch(`/api/interventions/update-revenu-percu`, {
+                        method: 'POST',
+                        headers: getHeaders(),
+                        body: JSON.stringify({
+                            mois: mois.mois,
+                            technicien: props.technicien,
+                            revenus_percus: parseFloat(mois.revenus_percus || 0)
+                        })
+                    }),
+                    // Mise à jour des prestations immeuble
+                    fetch(`/api/interventions/update-presta-revenue`, {
+                        method: 'POST',
+                        headers: getHeaders(),
+                        body: JSON.stringify({
+                            mois: mois.mois,
+                            technicien: props.technicien,
+                            type_habitation: 'immeuble',
+                            revenus: 25,
+                            nombre: mois.presta_immeuble || 0
+                        })
+                    }),
+                    // Mise à jour des prestations pavillon
+                    fetch(`/api/interventions/update-presta-revenue`, {
+                        method: 'POST',
+                        headers: getHeaders(),
+                        body: JSON.stringify({
+                            mois: mois.mois,
+                            technicien: props.technicien,
+                            type_habitation: 'pavillon',
+                            revenus: 45,
+                            nombre: mois.presta_pavillon || 0
+                        })
+                    })
+                ];
+
+                // Exécuter toutes les requêtes pour ce mois en parallèle
+                const responses = await Promise.all(monthPromises);
+
+                // Vérifier les réponses
+                for (const response of responses) {
+                    if (!response.ok) {
+                        throw new Error('Erreur lors de la mise à jour');
+                    }
+                }
+
+                completedOperations++;
+                saveProgress.value = (completedOperations / totalOperations) * 100;
+                estimatedTime.value = ((Date.now() - startTime.value) / completedOperations) * (totalOperations - completedOperations);
+
+            } catch (error) {
+                throw new Error(`Erreur pour le mois ${mois.mois}: ${error.message}`);
             }
+        });
 
-            // Mettre à jour les prestations immeuble
-            const immeubleResponse = await fetch(`/api/interventions/update-presta-revenue`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify({
-                    mois: mois.mois,
-                    technicien: props.technicien,
-                    type_habitation: 'immeuble',
-                    revenus: 25, // Prix fixe pour immeuble
-                    nombre: mois.presta_immeuble || 0 // Ajout du nombre de prestations
-                })
-            });
-
-            if (!immeubleResponse.ok) {
-                throw new Error('Erreur lors de la mise à jour des prestations immeuble');
-            }
-
-            // Mettre à jour les prestations pavillon
-            const pavillonResponse = await fetch(`/api/interventions/update-presta-revenue`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify({
-                    mois: mois.mois,
-                    technicien: props.technicien,
-                    type_habitation: 'pavillon',
-                    revenus: 45, // Prix fixe pour pavillon
-                    nombre: mois.presta_pavillon || 0 // Ajout du nombre de prestations
-                })
-            });
-
-            if (!pavillonResponse.ok) {
-                throw new Error('Erreur lors de la mise à jour des prestations pavillon');
-            }
-        }
+        // Exécuter toutes les mises à jour en parallèle
+        await Promise.all(updatePromises);
 
         // Mettre à jour les totaux globaux
         stats.value.global.total_revenus = calculateGlobalTotal();
@@ -367,11 +403,14 @@ const saveAllChanges = async () => {
 
         // Marquer comme sauvegardé
         unsavedChanges.value = false;
+
     } catch (e) {
         console.error('Erreur lors de la sauvegarde:', e);
         error.value = e.message || 'Erreur lors de la sauvegarde des modifications';
     } finally {
         saving.value = false;
+        saveProgress.value = 0;
+        estimatedTime.value = 0;
     }
 };
 

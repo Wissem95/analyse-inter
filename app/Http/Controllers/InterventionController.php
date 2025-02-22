@@ -94,7 +94,6 @@ class InterventionController extends Controller
                 'message' => 'Import réussi',
                 'count' => $count
             ]);
-
         } catch (\Exception $e) {
             Log::error('Erreur lors de l\'import: ' . $e->getMessage());
             return response()->json([
@@ -196,7 +195,6 @@ class InterventionController extends Controller
                 'par_service' => $parService,
                 'evolution' => $evolution
             ]);
-
         } catch (\Exception $e) {
             Log::error('Erreur lors du chargement des statistiques: ' . $e->getMessage());
             return response()->json([
@@ -291,7 +289,6 @@ class InterventionController extends Controller
                 'par_service' => $parService,
                 'evolution' => $evolution
             ]);
-
         } catch (\Exception $e) {
             Log::error('Erreur lors du chargement des statistiques du technicien: ' . $e->getMessage());
             Log::error($e->getTraceAsString());
@@ -347,30 +344,31 @@ class InterventionController extends Controller
         try {
             DB::beginTransaction();
 
-            // Supprimer d'abord toutes les prestations existantes pour ce mois/type
+            // Supprimer toutes les prestations existantes pour ce mois/type en une seule requête
             Intervention::where('type_intervention', 'PRESTA')
                 ->where('type_habitation', $request->type_habitation)
                 ->where('technicien', $request->technicien)
                 ->whereBetween('date_intervention', [$startDate, $endDate])
                 ->delete();
 
-            // Créer le nombre demandé de prestations
-            for ($i = 0; $i < $request->nombre; $i++) {
-                Intervention::create([
+            // Créer toutes les prestations en une seule requête
+            if ($request->nombre > 0) {
+                $prestations = array_fill(0, $request->nombre, [
                     'date_intervention' => $startDate,
                     'technicien' => $request->technicien,
                     'type_intervention' => 'PRESTA',
                     'type_habitation' => $request->type_habitation,
-                    'prix' => $request->revenus
+                    'prix' => $request->revenus,
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ]);
+
+                // Insertion en masse
+                Intervention::insert($prestations);
             }
 
             DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'count' => $request->nombre
-            ]);
+            return response()->json(['success' => true, 'count' => $request->nombre]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur lors de la mise à jour des prestations: ' . $e->getMessage());
@@ -396,23 +394,31 @@ class InterventionController extends Controller
         try {
             DB::beginTransaction();
 
-            // Récupérer la première intervention du mois
-            $firstIntervention = Intervention::where('technicien', $request->technicien)
-                ->whereBetween('date_intervention', [$startDate, $endDate])
-                ->orderBy('date_intervention')
-                ->first();
-
-            if ($firstIntervention) {
-                // Mettre à jour uniquement la première intervention avec le montant total
-                $firstIntervention->revenus_percus = $request->revenus_percus;
-                $firstIntervention->save();
-
-                // Mettre à 0 les revenus perçus pour les autres interventions du mois
-                Intervention::where('technicien', $request->technicien)
-                    ->whereBetween('date_intervention', [$startDate, $endDate])
-                    ->where('id', '!=', $firstIntervention->id)
-                    ->update(['revenus_percus' => 0]);
-            }
+            // Mise à jour en une seule requête avec CASE
+            DB::statement("
+                UPDATE interventions
+                SET revenus_percus = CASE
+                    WHEN id = (
+                        SELECT id
+                        FROM interventions
+                        WHERE technicien = ?
+                        AND date_intervention BETWEEN ? AND ?
+                        ORDER BY date_intervention
+                        LIMIT 1
+                    ) THEN ?
+                    ELSE 0
+                END
+                WHERE technicien = ?
+                AND date_intervention BETWEEN ? AND ?
+            ", [
+                $request->technicien,
+                $startDate,
+                $endDate,
+                $request->revenus_percus,
+                $request->technicien,
+                $startDate,
+                $endDate
+            ]);
 
             DB::commit();
             return response()->json(['success' => true]);

@@ -57,11 +57,78 @@
         <!-- Graphique d'évolution mensuelle -->
         <div class="p-6 bg-white rounded-lg shadow">
             <h2 class="mb-4 text-lg font-medium">Évolution mensuelle</h2>
-            <div class="h-80">
-                <Line
-                    :data="evolutionData"
-                    :options="chartOptions"
-                />
+            <div class="relative w-full">
+                <Carousel
+                    v-model="currentSlide"
+                    :items-to-show="1"
+                    :wrap-around="true"
+                    :transition="500"
+                    class="h-[400px]"
+                    ref="carousel"
+                    :autoplay="3000"
+                    pause-autoplay-on-hover
+                >
+                    <!-- Graphique des revenus -->
+                    <Slide v-slot="{ isActive }" :index="0">
+                        <div class="w-full h-full px-2">
+                            <h3 class="mb-2 text-lg font-medium text-center">Revenus Totaux</h3>
+                            <div class="h-[350px]">
+                                <Line
+                                    v-show="isActive"
+                                    :data="revenusChartData"
+                                    :options="chartOptions"
+                                />
+                            </div>
+                        </div>
+                    </Slide>
+
+                    <!-- Graphique des SAV -->
+                    <Slide v-slot="{ isActive }" :index="1">
+                        <div class="w-full h-full px-2">
+                            <h3 class="mb-2 text-lg font-medium text-center">SAV</h3>
+                            <div class="h-[350px]">
+                                <Line
+                                    v-show="isActive"
+                                    :data="savChartData"
+                                    :options="chartOptions"
+                                />
+                            </div>
+                        </div>
+                    </Slide>
+
+                    <!-- Graphique des Raccordements -->
+                    <Slide v-slot="{ isActive }" :index="2">
+                        <div class="w-full h-full px-2">
+                            <h3 class="mb-2 text-lg font-medium text-center">Raccordements</h3>
+                            <div class="h-[350px]">
+                                <Line
+                                    v-show="isActive"
+                                    :data="raccordementsChartData"
+                                    :options="chartOptions"
+                                />
+                            </div>
+                        </div>
+                    </Slide>
+
+                    <!-- Graphique des Reconnexions -->
+                    <Slide v-slot="{ isActive }" :index="3">
+                        <div class="w-full h-full px-2">
+                            <h3 class="mb-2 text-lg font-medium text-center">Reconnexions</h3>
+                            <div class="h-[350px]">
+                                <Line
+                                    v-show="isActive"
+                                    :data="reconnexionsChartData"
+                                    :options="chartOptions"
+                                />
+                            </div>
+                        </div>
+                    </Slide>
+
+                    <template #addons>
+                        <Navigation />
+                        <Pagination />
+                    </template>
+                </Carousel>
             </div>
         </div>
 
@@ -111,6 +178,8 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { Carousel, Navigation, Pagination, Slide } from 'vue3-carousel';
+import 'vue3-carousel/dist/carousel.css';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -119,7 +188,8 @@ import {
     LineElement,
     Title,
     Tooltip,
-    Legend
+    Legend,
+    Filler
 } from 'chart.js';
 import { Line } from 'vue-chartjs';
 import DateFilter from './DateFilter.vue';
@@ -134,7 +204,8 @@ ChartJS.register(
     LineElement,
     Title,
     Tooltip,
-    Legend
+    Legend,
+    Filler
 );
 
 const stats = ref({
@@ -152,45 +223,168 @@ const dateFilter = ref({
 
 const selectedTechnicien = ref(null);
 
+// Référence pour le carrousel
+const carousel = ref(null);
+const currentSlide = ref(0);
+
+// Options communes pour tous les graphiques
 const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: {
+        duration: 400
+    },
     scales: {
         y: {
-            beginAtZero: true
+            beginAtZero: true,
+            grid: {
+                color: 'rgba(0, 0, 0, 0.1)',
+            },
+            ticks: {
+                callback: function(value) {
+                    if (this.chart.canvas.id.includes('revenus')) {
+                        return new Intl.NumberFormat('fr-FR', {
+                            style: 'currency',
+                            currency: 'EUR',
+                            maximumFractionDigits: 0
+                        }).format(value);
+                    }
+                    return value;
+                }
+            }
+        },
+        x: {
+            grid: {
+                display: false
+            }
+        }
+    },
+    plugins: {
+        legend: {
+            display: true,
+            position: 'top'
+        },
+        tooltip: {
+            mode: 'index',
+            intersect: false,
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            titleColor: '#1f2937',
+            bodyColor: '#1f2937',
+            borderColor: '#e5e7eb',
+            borderWidth: 1,
+            padding: 10,
+            displayColors: true,
+            callbacks: {
+                label: function(context) {
+                    let label = context.dataset.label || '';
+                    let value = context.parsed.y;
+
+                    if (label.toLowerCase().includes('revenus')) {
+                        return `${label}: ${new Intl.NumberFormat('fr-FR', {
+                            style: 'currency',
+                            currency: 'EUR'
+                        }).format(value)}`;
+                    }
+
+                    return `${label}: ${new Intl.NumberFormat('fr-FR').format(value)}`;
+                }
+            }
         }
     }
 };
 
-const evolutionData = computed(() => ({
-    labels: stats.value.par_mois.map(m => m.mois),
-    datasets: [
-        {
-            label: 'Revenus',
-            data: stats.value.par_mois.map(m => m.revenus),
-            borderColor: 'rgb(59, 130, 246)',
-            tension: 0.1
-        },
-        {
-            label: 'SAV',
-            data: stats.value.par_mois.map(m => m.details.sav),
-            borderColor: 'rgb(239, 68, 68)',
-            tension: 0.1
-        },
-        {
-            label: 'Raccordements',
-            data: stats.value.par_mois.map(m => m.details.raccordements),
-            borderColor: 'rgb(34, 197, 94)',
-            tension: 0.1
-        },
-        {
-            label: 'Reconnexions',
-            data: stats.value.par_mois.map(m => m.details.reconnexions),
-            borderColor: 'rgb(234, 179, 8)',
-            tension: 0.1
+// Données pour chaque graphique
+const revenusChartData = computed(() => {
+    // Regrouper les revenus par mois
+    const revenusParMois = {};
+    stats.value.par_mois.forEach(mois => {
+        if (!revenusParMois[mois.mois]) {
+            revenusParMois[mois.mois] = 0;
         }
-    ]
-}));
+        revenusParMois[mois.mois] += mois.revenus || 0;
+    });
+
+    return {
+        labels: Object.keys(revenusParMois),
+        datasets: [{
+            label: 'Revenus Totaux',
+            data: Object.values(revenusParMois),
+            borderColor: 'rgb(59, 130, 246)',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            tension: 0.1,
+            fill: true
+        }]
+    };
+});
+
+const savChartData = computed(() => {
+    // Regrouper les SAV par mois
+    const savParMois = {};
+    stats.value.par_mois.forEach(mois => {
+        if (!savParMois[mois.mois]) {
+            savParMois[mois.mois] = 0;
+        }
+        savParMois[mois.mois] += mois.details?.sav || 0;
+    });
+
+    return {
+        labels: Object.keys(savParMois),
+        datasets: [{
+            label: 'SAV Totaux',
+            data: Object.values(savParMois),
+            borderColor: 'rgb(239, 68, 68)',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            tension: 0.1,
+            fill: true
+        }]
+    };
+});
+
+const raccordementsChartData = computed(() => {
+    // Regrouper les raccordements par mois
+    const raccordementsParMois = {};
+    stats.value.par_mois.forEach(mois => {
+        if (!raccordementsParMois[mois.mois]) {
+            raccordementsParMois[mois.mois] = 0;
+        }
+        raccordementsParMois[mois.mois] += mois.details?.raccordements || 0;
+    });
+
+    return {
+        labels: Object.keys(raccordementsParMois),
+        datasets: [{
+            label: 'Raccordements Totaux',
+            data: Object.values(raccordementsParMois),
+            borderColor: 'rgb(34, 197, 94)',
+            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+            tension: 0.1,
+            fill: true
+        }]
+    };
+});
+
+const reconnexionsChartData = computed(() => {
+    // Regrouper les reconnexions par mois
+    const reconnexionsParMois = {};
+    stats.value.par_mois.forEach(mois => {
+        if (!reconnexionsParMois[mois.mois]) {
+            reconnexionsParMois[mois.mois] = 0;
+        }
+        reconnexionsParMois[mois.mois] += mois.details?.reconnexions || 0;
+    });
+
+    return {
+        labels: Object.keys(reconnexionsParMois),
+        datasets: [{
+            label: 'Reconnexions Totaux',
+            data: Object.values(reconnexionsParMois),
+            borderColor: 'rgb(234, 179, 8)',
+            backgroundColor: 'rgba(234, 179, 8, 0.1)',
+            tension: 0.1,
+            fill: true
+        }]
+    };
+});
 
 const formatNumber = (value) => {
     return new Intl.NumberFormat('fr-FR').format(value);
@@ -313,3 +507,53 @@ onMounted(loadStats);
 // Exposer loadStats pour qu'elle soit accessible depuis l'extérieur
 defineExpose({ loadStats });
 </script>
+
+<style>
+.carousel__slide {
+    @apply w-full;
+}
+
+.carousel__viewport {
+    @apply w-full;
+}
+
+.carousel__track {
+    @apply w-full;
+}
+
+.carousel__pagination {
+    @apply mt-4;
+}
+
+.carousel__pagination-button {
+    @apply w-3 h-3 rounded-full bg-gray-300 mx-1 transition-all duration-300;
+}
+
+.carousel__pagination-button--active {
+    @apply bg-blue-600;
+}
+
+.carousel__prev,
+.carousel__next {
+    @apply absolute top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center
+           bg-white rounded-full shadow-lg z-10 transition-all duration-300
+           hover:bg-gray-50 hover:scale-110;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.carousel__prev {
+    @apply left-2;
+}
+
+.carousel__next {
+    @apply right-2;
+}
+
+/* Optimisation pour les appareils mobiles */
+@media (max-width: 640px) {
+    .carousel__prev,
+    .carousel__next {
+        @apply w-8 h-8;
+    }
+}
+</style>
