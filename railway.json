@@ -1,0 +1,28 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "nixpacks",
+    "buildCommand": "chmod +x build-app.sh && ./build-app.sh"
+  },
+  "deploy": {
+    "startCommand": "cp .env.railway .env && php artisan optimize && php artisan serve --host=0.0.0.0 --port=$PORT",
+    "healthcheckPath": "/",
+    "healthcheckTimeout": 100,
+    "restartPolicyType": "on_failure",
+    "restartPolicyMaxRetries": 3
+  },
+  "services": {
+    "web": {
+      "name": "web",
+      "startCommand": "cp .env.railway .env && php artisan serve --host=0.0.0.0 --port=$PORT"
+    },
+    "worker": {
+      "name": "worker",
+      "startCommand": "chmod +x run-worker.sh && ./run-worker.sh"
+    },
+    "scheduler": {
+      "name": "scheduler",
+      "startCommand": "chmod +x run-cron.sh && ./run-cron.sh"
+    }
+  }
+}
