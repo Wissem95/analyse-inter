@@ -1,14 +1,11 @@
 web: cp .env.railway .env && \
-    composer install --no-dev --optimize-autoloader && \
-    php artisan key:generate --force && \
-    php artisan config:clear && \
-    php artisan cache:clear && \
-    php artisan view:clear && \
-    php artisan route:clear && \
+    composer dump-autoload --optimize && \
+    php artisan optimize:clear && \
     php artisan config:cache && \
     php artisan route:cache && \
     php artisan view:cache && \
     php artisan storage:link && \
     php artisan migrate --force --no-interaction && \
-    php -S 0.0.0.0:$PORT -t public
+    php -S 0.0.0.0:${PORT:-8000} -t public
+
 release: php artisan migrate --force --no-interaction
