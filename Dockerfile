@@ -41,8 +41,9 @@ WORKDIR /var/www
 # Copy composer files first
 COPY composer.json composer.lock ./
 
-# Copy .env.example
+# Copy .env.example and .env.railway
 COPY .env.example .env
+COPY .env.railway .env.railway
 
 # Install composer dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
@@ -61,10 +62,19 @@ USER root
 # Expose port 8000
 EXPOSE 8000
 
+# Create storage directory structure
+RUN mkdir -p /var/www/storage/framework/{sessions,views,cache} \
+    && mkdir -p /var/www/storage/logs \
+    && chown -R www-data:www-data /var/www/storage \
+    && chmod -R 775 /var/www/storage
+
 # Start PHP built-in server
 CMD cp .env.railway .env && \
+    composer dump-autoload --optimize && \
     php artisan config:clear && \
     php artisan cache:clear && \
+    php artisan view:clear && \
+    php artisan route:clear && \
     php artisan config:cache && \
     php artisan route:cache && \
     php artisan view:cache && \
