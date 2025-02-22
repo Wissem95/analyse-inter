@@ -38,15 +38,23 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www
 
-# Copy project files
-COPY . /var/www/
+# Copy composer files first
+COPY composer.json composer.lock ./
 
-# Install dependencies as non-root user
+# Copy .env.example
+COPY .env.example .env
+
+# Install composer dependencies
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+
+# Copy the rest of the application
+COPY . .
+
+# Set permissions
 RUN chown -R www-data:www-data /var/www
 USER www-data
 
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Install and build assets
 RUN npm ci && npm run build
 
 USER root
